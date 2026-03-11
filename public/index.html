@@ -783,6 +783,98 @@
     letter-spacing:1px;
   }
 
+  /* Go Fish draw overlay */
+  #goFishOverlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  #goFishOverlay.show {
+    pointer-events: all;
+    opacity: 1;
+  }
+
+  .gofish-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,14,26,0.82);
+    backdrop-filter: blur(4px);
+  }
+
+  .gofish-box {
+    position: relative;
+    background: linear-gradient(160deg, #0d2240 0%, #06121e 100%);
+    border: 2px solid rgba(78,205,196,0.6);
+    border-radius: 24px;
+    padding: 2.5rem 2.5rem 2rem;
+    text-align: center;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: 0 0 50px rgba(78,205,196,0.25), 0 20px 60px rgba(0,0,0,0.6);
+    animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both;
+  }
+
+  .gofish-fish {
+    font-size: 3.5rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    animation: fishWiggle 0.6s ease infinite alternate;
+  }
+
+  @keyframes fishWiggle {
+    from { transform: rotate(-8deg) scale(1); }
+    to   { transform: rotate(8deg) scale(1.1); }
+  }
+
+  .gofish-title {
+    font-family: 'Fraunces', serif;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--mint);
+    text-shadow: 0 0 20px rgba(78,205,196,0.5);
+    margin-bottom: 0.3rem;
+  }
+
+  .gofish-sub {
+    color: var(--foam);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .gofish-draw-btn {
+    background: linear-gradient(135deg, var(--mint), #3ab8b0);
+    border: none;
+    border-radius: 14px;
+    color: var(--deep);
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    font-weight: 900;
+    padding: 0.9rem 2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    letter-spacing: 0.5px;
+    animation: pulse 1.2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(78,205,196,0.5); transform: scale(1); }
+    50%       { box-shadow: 0 0 0 10px rgba(78,205,196,0); transform: scale(1.03); }
+  }
+
+  .gofish-draw-btn:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(78,205,196,0.5) !important;
+  }
+
   /* Winner pop-up */
   #winnerPopup {
     position: fixed;
@@ -1314,6 +1406,17 @@
 <!-- Toast container -->
 <div id="toastContainer"></div>
 
+<!-- Go Fish Draw Overlay -->
+<div id="goFishOverlay">
+  <div class="gofish-bg"></div>
+  <div class="gofish-box">
+    <span class="gofish-fish">🐟</span>
+    <div class="gofish-title">Go Fish!</div>
+    <div class="gofish-sub" id="goFishMsg">They don't have it!<br>Pick a card from the lake.</div>
+    <button class="gofish-draw-btn" onclick="drawFromOverlay()">🎴 Pick a Card!</button>
+  </div>
+</div>
+
 <!-- Winner Popup -->
 <div id="winnerPopup">
   <div class="winner-popup-bg" onclick="closeWinnerPopup()"></div>
@@ -1511,7 +1614,19 @@ function renderGame(state) {
   if (deckLabel) deckLabel.textContent = `${state.deckCount} card${state.deckCount !== 1 ? 's' : ''} remaining`;
 
   // waitingForDraw: is it MY turn to pick from the deck?
+  const wasWaitingForDraw = waitingForDraw;
   waitingForDraw = (state.waitingForDraw?.playerId === myPlayerId);
+
+  // Show Go Fish overlay the moment we enter waitingForDraw state
+  if (waitingForDraw && !wasWaitingForDraw) {
+    const target = state.players.find(p => p.id === state.waitingForDraw?.targetId);
+    showGoFishOverlay(target?.name || '...', state.waitingForDraw?.askedRank || '?');
+  }
+  // Hide overlay if state cleared (e.g. after drawing)
+  if (!waitingForDraw && wasWaitingForDraw) {
+    closeGoFishOverlay();
+  }
+
   const scatterWrap = document.getElementById('deckScatterWrap');
   const scatterArea = document.getElementById('deckScatterArea');
   if (scatterWrap) {
@@ -1521,8 +1636,8 @@ function renderGame(state) {
     } else if (waitingForDraw) {
       scatterWrap.style.opacity = '1';
       scatterWrap.style.pointerEvents = 'all';
-      scatterArea && (scatterArea.style.filter = 'drop-shadow(0 0 18px rgba(78,205,196,0.8))');
-      scatterArea && (scatterArea.style.transform = 'scale(1.06)');
+      scatterArea && (scatterArea.style.filter = 'drop-shadow(0 0 22px rgba(78,205,196,0.9))');
+      scatterArea && (scatterArea.style.transform = 'scale(1.08)');
     } else {
       scatterWrap.style.opacity = state.waitingForDraw ? '0.5' : '1';
       scatterWrap.style.pointerEvents = 'none';
@@ -1576,13 +1691,16 @@ function renderGame(state) {
     scoresList.appendChild(div);
   });
 
-  // Toasts: show new log entries that appeared since last render
-  if (state.log.length > 0) {
-    const newTop = state.log[0];
-    if (newTop !== lastToastMsg) {
-      lastToastMsg = newTop;
-      showToast(newTop);
-    }
+  // Toasts: show ALL new log entries since last render (newest first = log[0])
+  if (state.log.length > 0 && state.log[0] !== lastToastMsg) {
+    // Find how many are new
+    const prevIdx = lastToastMsg ? state.log.indexOf(lastToastMsg) : state.log.length;
+    const newEntries = prevIdx > 0 ? state.log.slice(0, prevIdx) : [state.log[0]];
+    lastToastMsg = state.log[0];
+    // Show them oldest-first so they read in order, staggered
+    newEntries.reverse().forEach((msg, i) => {
+      setTimeout(() => showToast(msg), i * 400);
+    });
   }
 
   // My Hand
@@ -1683,18 +1801,17 @@ function updateAskPanel(state) {
   // Someone else is waiting to draw — show who
   if (state.waitingForDraw && state.waitingForDraw.playerId !== myPlayerId) {
     const picker = state.players.find(p => p.id === state.waitingForDraw.playerId);
-    panel.innerHTML = `<div class="not-my-turn-msg">🎴 ${escHtml(picker?.name || '...')} is picking a card from the deck...</div>`;
+    panel.innerHTML = `<div class="not-my-turn-msg">🐟 Go Fish! ${escHtml(picker?.name || '...')} is picking a card...</div>`;
     return;
   }
 
-  // MY turn to pick from deck
+  // MY turn to pick from deck — overlay handles the main prompt, panel shows reminder
   if (waitingForDraw) {
     panel.innerHTML = `
-      <div style="text-align:center; padding:0.5rem 0">
-        <div style="font-size:1.5rem; margin-bottom:0.4rem">🎴</div>
-        <div style="color:var(--mint); font-family:'Fraunces',serif; font-size:1rem; font-weight:700; margin-bottom:0.3rem">Go Fish!</div>
-        <div style="color:var(--foam); font-size:0.82rem">Click any card in the pile above to draw!</div>
-        <div style="color:var(--muted); font-size:0.72rem; margin-top:0.4rem">(The cards are face-down — it's luck!)</div>
+      <div style="text-align:center; padding:0.5rem 0; border:2px solid rgba(78,205,196,0.4); border-radius:12px; background:rgba(78,205,196,0.07)">
+        <div style="font-size:1.3rem; margin-bottom:0.3rem">🎴</div>
+        <div style="color:var(--mint); font-family:'Fraunces',serif; font-size:0.95rem; font-weight:700;">Go Fish! Pick from the lake above</div>
+        <div style="color:var(--muted); font-size:0.72rem; margin-top:0.3rem">or click the button that appeared</div>
       </div>`;
     return;
   }
@@ -1759,15 +1876,26 @@ function submitAsk() {
 
 function pickFromDeck() {
   if (!waitingForDraw) return;
-  // Animate a card flipping out
-  const area = document.getElementById('deckScatterArea');
-  if (area) {
-    area.style.transition = 'transform 0.2s, filter 0.2s';
-    area.style.transform = 'scale(0.92)';
-    setTimeout(() => { area.style.transform = 'scale(1.06)'; }, 120);
-  }
+  closeGoFishOverlay();
   socket.emit('drawCard', { roomCode: myRoomCode, playerId: myPlayerId });
   waitingForDraw = false;
+}
+
+function drawFromOverlay() {
+  // Button inside the Go Fish overlay
+  pickFromDeck();
+}
+
+function showGoFishOverlay(targetName, rank) {
+  const overlay = document.getElementById('goFishOverlay');
+  const msg = document.getElementById('goFishMsg');
+  if (msg) msg.innerHTML = `<strong>${escHtml(targetName)}</strong> doesn't have any ${rank}s!<br>Pick a card from the lake.`;
+  if (overlay) overlay.classList.add('show');
+}
+
+function closeGoFishOverlay() {
+  const overlay = document.getElementById('goFishOverlay');
+  if (overlay) overlay.classList.remove('show');
 }
 
 function sendChat() {
