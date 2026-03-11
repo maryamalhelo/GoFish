@@ -623,59 +623,271 @@
   .cards-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    gap: 0.4rem;
+    padding: 0.8rem 0.5rem 0.5rem;
+    align-items: flex-end;
+  }
+
+  .rank-group {
+    display: flex;
+    gap: 0.3rem;
+    position: relative;
+  }
+
+  .rank-group + .rank-group {
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid rgba(78,205,196,0.18);
   }
 
   .playing-card {
-    width: 58px;
-    height: 82px;
-    background: white;
-    border-radius: 8px;
+    width: 64px;
+    height: 92px;
+    border-radius: 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 4px;
+    padding: 5px 5px 4px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
     position: relative;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.45);
     flex-shrink: 0;
     user-select: none;
+    overflow: hidden;
+  }
+
+  .playing-card.suit-hearts   { background: linear-gradient(160deg,#fff5f5 0%,#ffe0e0 100%); }
+  .playing-card.suit-diamonds { background: linear-gradient(160deg,#fff8f0 0%,#ffe8cc 100%); }
+  .playing-card.suit-spades   { background: linear-gradient(160deg,#f0f4ff 0%,#dce6ff 100%); }
+  .playing-card.suit-clubs    { background: linear-gradient(160deg,#f0fff8 0%,#d0f5e8 100%); }
+
+  .playing-card::before {
+    content:'';
+    position:absolute;
+    inset:0;
+    background:radial-gradient(circle at 70% 30%,rgba(255,255,255,0.6) 0%,transparent 60%);
+    pointer-events:none;
   }
 
   .playing-card:hover {
-    transform: translateY(-12px) scale(1.05);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+    transform: translateY(-18px) scale(1.08);
+    box-shadow: 0 20px 35px rgba(0,0,0,0.55);
     z-index: 5;
   }
 
   .playing-card.selected-card {
-    transform: translateY(-16px) scale(1.08);
-    box-shadow: 0 0 0 3px var(--mint), 0 20px 35px rgba(0,0,0,0.5);
+    transform: translateY(-24px) scale(1.12);
+    box-shadow: 0 0 0 3px var(--mint), 0 24px 40px rgba(0,0,0,0.55);
     z-index: 6;
+  }
+
+  .card-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .card-corner-bottom {
+    transform: rotate(180deg);
+    align-self: flex-end;
   }
 
   .card-rank {
     font-family: 'Fraunces', serif;
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 900;
     line-height: 1;
   }
 
-  .card-suit {
-    font-size: 0.7rem;
+  .card-suit-small {
+    font-size: 0.65rem;
     line-height: 1;
+    margin-top: 1px;
   }
 
-  .card-center {
-    font-size: 1.4rem;
+  .card-center-suit {
+    font-size: 2.1rem;
     text-align: center;
     line-height: 1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -52%);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
   }
 
-  .card-bottom {
-    transform: rotate(180deg);
+  .red-card    { color: #c0392b; }
+  .black-card  { color: #1a1a2e; }
+  .orange-card { color: #c0600a; }
+  .green-card  { color: #0a7a40; }
+
+  /* Scattered face-down deck */
+  .deck-scatter-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0.5rem auto 0;
+  }
+
+  .deck-scatter-area {
+    position: relative;
+    width: 190px;
+    height: 115px;
+    cursor: pointer;
+  }
+
+  .deck-scatter-card {
+    position: absolute;
+    width: 58px;
+    height: 82px;
+    border-radius: 9px;
+    background: linear-gradient(135deg,#1e3a6e 0%,#0d2040 50%,#162d58 100%);
+    border: 2px solid rgba(100,160,255,0.35);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    overflow: hidden;
+  }
+
+  .deck-scatter-card::after {
+    content:'';
+    position:absolute;
+    inset:5px;
+    border:1px solid rgba(100,160,255,0.18);
+    border-radius:5px;
+    background:
+      repeating-linear-gradient(45deg,rgba(100,160,255,0.06) 0px,rgba(100,160,255,0.06) 2px,transparent 2px,transparent 8px),
+      repeating-linear-gradient(-45deg,rgba(100,160,255,0.06) 0px,rgba(100,160,255,0.06) 2px,transparent 2px,transparent 8px);
+  }
+
+  .deck-scatter-card .fish-back {
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    font-size:1.5rem; opacity:0.35; z-index:1;
+  }
+
+  .deck-scatter-area:hover .deck-scatter-card:nth-child(1) { transform:rotate(-20deg) translate(-10px,5px) scale(1.07); box-shadow:0 8px 22px rgba(78,205,196,0.35); }
+  .deck-scatter-area:hover .deck-scatter-card:nth-child(2) { transform:rotate(-7deg)  translate(0px,-3px)  scale(1.07); box-shadow:0 8px 22px rgba(78,205,196,0.35); }
+  .deck-scatter-area:hover .deck-scatter-card:nth-child(3) { transform:rotate(5deg)   translate(8px,2px)   scale(1.07); box-shadow:0 8px 22px rgba(78,205,196,0.35); }
+  .deck-scatter-area:hover .deck-scatter-card:nth-child(4) { transform:rotate(16deg)  translate(16px,7px)  scale(1.07); box-shadow:0 8px 22px rgba(78,205,196,0.35); }
+  .deck-scatter-area:hover .deck-scatter-card:nth-child(5) { transform:rotate(-13deg) translate(-5px,10px) scale(1.07); box-shadow:0 8px 22px rgba(78,205,196,0.35); }
+
+  .deck-label {
+    text-align:center;
+    font-size:0.72rem;
+    color:var(--muted);
+    margin-top:0.5rem;
+    letter-spacing:1px;
+  }
+
+  /* Winner pop-up */
+  #winnerPopup {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  #winnerPopup.show {
+    pointer-events: all;
+    opacity: 1;
+  }
+
+  .winner-popup-bg {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,14,26,0.78);
+    backdrop-filter: blur(7px);
+  }
+
+  .winner-popup-box {
+    position: relative;
+    background: linear-gradient(160deg,#0d2240 0%,#06121e 100%);
+    border: 2px solid rgba(240,192,64,0.55);
+    border-radius: 28px;
+    padding: 2.5rem 2.5rem 2rem;
+    text-align: center;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 0 60px rgba(240,192,64,0.22), 0 30px 80px rgba(0,0,0,0.7);
+    animation: popIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both;
+  }
+
+  @keyframes popIn {
+    0%   { transform:scale(0.4) translateY(40px); opacity:0; }
+    100% { transform:scale(1)   translateY(0);    opacity:1; }
+  }
+
+  .confetti-row {
+    font-size: 1.6rem;
+    letter-spacing: 4px;
+    margin-bottom: 0.5rem;
+    animation: dropIn 0.6s ease 0.25s both;
+  }
+
+  @keyframes dropIn {
+    from { transform:translateY(-20px); opacity:0; }
+    to   { transform:translateY(0);     opacity:1; }
+  }
+
+  .winner-popup-trophy {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    animation: trophyPulse 1.1s ease 0.5s infinite alternate;
+  }
+
+  @keyframes trophyPulse {
+    from { transform:scale(1)    rotate(-4deg); }
+    to   { transform:scale(1.12) rotate(4deg); }
+  }
+
+  .winner-popup-eyebrow {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .winner-popup-name {
+    font-family: 'Fraunces', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(240,192,64,0.55);
+    line-height: 1.1;
+    margin-bottom: 0.2rem;
+  }
+
+  .winner-popup-sub {
+    color: var(--mint);
+    font-size: 0.82rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .winner-popup-close {
+    background: linear-gradient(135deg,var(--gold),var(--gold2));
+    border: none;
+    border-radius: 12px;
+    color: var(--deep);
+    font-family: 'Fraunces', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.7rem 2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .winner-popup-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(240,192,64,0.4);
   }
 
   .red { color: var(--card-red); }
@@ -999,8 +1211,7 @@
     <h2>🐟 Go Fish</h2>
     <div style="display:flex;align-items:center;gap:1rem;">
       <div class="deck-counter">
-        <div class="deck-pile">🂠</div>
-        <span id="deckCount">52 cards</span>
+        <span id="deckCount">52 cards left</span>
       </div>
       <span style="font-size:0.75rem;color:var(--muted);">Room: <strong id="headerRoomCode" style="color:var(--gold)"></strong></span>
     </div>
@@ -1012,6 +1223,18 @@
       <div>
         <div class="section-title">Other Players</div>
         <div class="opponents-area" id="opponentsArea"></div>
+      </div>
+
+      <!-- Scatter Deck -->
+      <div class="deck-scatter-wrap" id="deckScatterWrap">
+        <div class="deck-scatter-area" id="deckScatterArea" title="Draw from the deck (only when it's your turn and you've been told to Go Fish)">
+          <div class="deck-scatter-card" style="left:60px;top:14px;transform:rotate(-16deg)"><div class="fish-back">🐟</div></div>
+          <div class="deck-scatter-card" style="left:70px;top:8px;transform:rotate(-5deg)"><div class="fish-back">🐟</div></div>
+          <div class="deck-scatter-card" style="left:80px;top:12px;transform:rotate(5deg)"><div class="fish-back">🐟</div></div>
+          <div class="deck-scatter-card" style="left:90px;top:18px;transform:rotate(14deg)"><div class="fish-back">🐟</div></div>
+          <div class="deck-scatter-card" style="left:55px;top:20px;transform:rotate(-11deg)"><div class="fish-back">🐟</div></div>
+        </div>
+        <div class="deck-label" id="deckCountLabel">52 cards remaining</div>
       </div>
 
       <!-- Ask Panel -->
@@ -1065,6 +1288,19 @@
     <div class="final-scores" id="finalScores"></div>
     <button class="btn-start" id="playAgainBtn" onclick="playAgain()" style="display:none">🔄 Play Again</button>
     <p style="font-size:0.75rem; color:var(--muted); margin-top:1rem;" id="waitingHostMsg"></p>
+  </div>
+</div>
+
+<!-- Winner Popup -->
+<div id="winnerPopup">
+  <div class="winner-popup-bg" onclick="closeWinnerPopup()"></div>
+  <div class="winner-popup-box">
+    <div class="confetti-row">🎉🎊🏆🎊🎉</div>
+    <span class="winner-popup-trophy" id="popupTrophy">🏆</span>
+    <div class="winner-popup-eyebrow" id="popupEyebrow">Winner!</div>
+    <div class="winner-popup-name" id="popupName">Player</div>
+    <div class="winner-popup-sub" id="popupSub">with 5 books</div>
+    <button class="winner-popup-close" onclick="closeWinnerPopup()">See Final Scores</button>
   </div>
 </div>
 
@@ -1140,6 +1376,7 @@ function startGame() {
 }
 
 function playAgain() {
+  winnerPopupShown = false;
   socket.emit('playAgain', { roomCode: myRoomCode, playerId: myPlayerId });
 }
 
@@ -1220,8 +1457,12 @@ function renderGame(state) {
   isMyTurn = state.currentTurnPlayerId === myPlayerId;
   const myPlayer = state.players.find(p => p.id === myPlayerId);
 
-  // Header
-  document.getElementById('deckCount').textContent = `${state.deckCount} cards`;
+  // Header + scatter deck label
+  document.getElementById('deckCount').textContent = `${state.deckCount} cards left`;
+  const deckLabel = document.getElementById('deckCountLabel');
+  if (deckLabel) deckLabel.textContent = `${state.deckCount} card${state.deckCount !== 1 ? 's' : ''} remaining`;
+  const scatterWrap = document.getElementById('deckScatterWrap');
+  if (scatterWrap) scatterWrap.style.opacity = state.deckCount === 0 ? '0.3' : '1';
 
   // My info
   document.getElementById('myNameDisplay').textContent = myPlayer?.name || 'You';
@@ -1300,30 +1541,73 @@ function renderGame(state) {
   updateAskPanel(state);
 }
 
+function suitClass(suit) {
+  if (suit === '♥') return 'suit-hearts';
+  if (suit === '♦') return 'suit-diamonds';
+  if (suit === '♠') return 'suit-spades';
+  return 'suit-clubs';
+}
+
+function suitColor(suit) {
+  if (suit === '♥') return 'red-card';
+  if (suit === '♦') return 'orange-card';
+  if (suit === '♠') return 'black-card';
+  return 'green-card';
+}
+
+function makeCardEl(card, clickable) {
+  const sc = suitClass(card.suit);
+  const col = suitColor(card.suit);
+  const isSelected = selectedRank === card.rank;
+  const div = document.createElement('div');
+  div.className = `playing-card ${sc} ${isSelected ? 'selected-card' : ''}`;
+  div.innerHTML = `
+    <div class="card-corner">
+      <div class="card-rank ${col}">${card.rank}</div>
+      <div class="card-suit-small ${col}">${card.suit}</div>
+    </div>
+    <div class="card-center-suit">${card.suit}</div>
+    <div class="card-corner card-corner-bottom">
+      <div class="card-rank ${col}">${card.rank}</div>
+      <div class="card-suit-small ${col}">${card.suit}</div>
+    </div>
+  `;
+  if (clickable) {
+    div.onclick = () => selectRank(card.rank);
+  } else {
+    div.style.cursor = 'default';
+  }
+  return div;
+}
+
 function renderHand(hand) {
   const area = document.getElementById('myHandArea');
   area.innerHTML = '';
-  hand.forEach(card => {
-    const isRed = ['♥','♦'].includes(card.suit);
-    const div = document.createElement('div');
-    div.className = `playing-card ${selectedRank === card.rank ? 'selected-card' : ''}`;
-    div.innerHTML = `
-      <div>
-        <div class="card-rank ${isRed?'red':'black'}">${card.rank}</div>
-        <div class="card-suit ${isRed?'red':'black'}">${card.suit}</div>
-      </div>
-      <div class="card-center ${isRed?'red':'black'}">${card.suit}</div>
-      <div class="card-bottom">
-        <div class="card-rank ${isRed?'red':'black'}">${card.rank}</div>
-        <div class="card-suit ${isRed?'red':'black'}">${card.suit}</div>
-      </div>
-    `;
-    if (isMyTurn) {
-      div.onclick = () => selectRank(card.rank);
-    } else {
-      div.style.cursor = 'default';
-    }
-    area.appendChild(div);
+
+  // Sort: group by rank in card order
+  const RANK_ORDER = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const sorted = [...hand].sort((a,b) => {
+    const ri = RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank);
+    if (ri !== 0) return ri;
+    return a.suit.localeCompare(b.suit);
+  });
+
+  // Group into rank groups
+  const groups = {};
+  sorted.forEach(card => {
+    if (!groups[card.rank]) groups[card.rank] = [];
+    groups[card.rank].push(card);
+  });
+
+  // Render each group
+  const ranksInOrder = RANK_ORDER.filter(r => groups[r]);
+  ranksInOrder.forEach(rank => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'rank-group';
+    groups[rank].forEach(card => {
+      groupDiv.appendChild(makeCardEl(card, isMyTurn));
+    });
+    area.appendChild(groupDiv);
   });
 }
 
@@ -1397,13 +1681,36 @@ function sendChat() {
 }
 
 // ─── Render Win ────────────────────────────────────────────────────────────────
+let winnerPopupShown = false;
+
+function showWinnerPopup(state) {
+  const winner = state.winner;
+  const isWinner = winner?.id === myPlayerId;
+  document.getElementById('popupTrophy').textContent = isWinner ? '🏆' : '🎊';
+  document.getElementById('popupEyebrow').textContent = isWinner ? 'You Won!' : 'Winner!';
+  document.getElementById('popupName').textContent = isWinner ? 'You!' : escHtml(winner?.name || '?');
+  document.getElementById('popupSub').textContent = `with ${winner?.books?.length || 0} book${winner?.books?.length !== 1 ? 's' : ''}`;
+  document.getElementById('winnerPopup').classList.add('show');
+}
+
+function closeWinnerPopup() {
+  document.getElementById('winnerPopup').classList.remove('show');
+  showScreen('winScreen');
+}
+
 function renderWin(state) {
+  // Show popup first (only once per game end)
+  if (!winnerPopupShown) {
+    winnerPopupShown = true;
+    showWinnerPopup(state);
+  }
+
   const winner = state.winner;
   const isWinner = winner?.id === myPlayerId;
   const myPlayer = state.players.find(p => p.id === myPlayerId);
 
   document.getElementById('winEmoji').textContent = isWinner ? '🏆' : '🐟';
-  document.getElementById('winnerName').textContent = isWinner ? 'You Win!' : `${winner?.name} Wins!`;
+  document.getElementById('winnerName').textContent = isWinner ? 'You Win!' : `${escHtml(winner?.name || '?')} Wins!`;
   document.getElementById('winSubtext').textContent = `with ${winner?.books?.length || 0} books`;
 
   const scores = document.getElementById('finalScores');
