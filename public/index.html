@@ -715,7 +715,9 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -52%);
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.12));
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+    color: #111 !important;
+    opacity: 0.85;
   }
 
   .red-card    { color: #c0392b; }
@@ -955,32 +957,52 @@
   .score-item .sname { color: var(--foam); }
   .score-item .sbooks { color: var(--gold); font-weight: 500; }
 
-  .log-area {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem;
+  /* ── Toast notification system ── */
+  #toastContainer {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+    width: min(460px, 92vw);
   }
 
-  .log-entry {
-    font-size: 0.72rem;
-    color: var(--muted);
-    padding: 0.3rem 0.5rem;
-    border-radius: 6px;
-    line-height: 1.4;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .log-entry:first-child {
-    background: rgba(78,205,196,0.07);
+  .toast {
+    background: rgba(10,22,40,0.95);
+    border: 1px solid rgba(78,205,196,0.25);
+    border-radius: 14px;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.82rem;
     color: var(--foam);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(78,205,196,0.08);
+    backdrop-filter: blur(12px);
+    max-width: 100%;
+    text-align: center;
+    animation: toastIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275) both,
+               toastOut 0.4s ease forwards;
+    animation-delay: 0s, var(--toast-delay, 2.2s);
+    line-height: 1.4;
+  }
+
+  .toast.toast-got    { border-color: rgba(78,205,196,0.5); color: var(--mint); }
+  .toast.toast-fish   { border-color: rgba(240,192,64,0.4); color: var(--gold); }
+  .toast.toast-book   { border-color: rgba(240,192,64,0.6); color: var(--gold); background: rgba(20,30,10,0.95); }
+  .toast.toast-turn   { border-color: rgba(255,255,255,0.15); color: var(--muted); font-size:0.75rem; }
+  .toast.toast-system { border-color: rgba(255,107,107,0.3); color: var(--coral); font-size:0.75rem; }
+
+  @keyframes toastIn {
+    from { opacity:0; transform:translateY(-16px) scale(0.88); }
+    to   { opacity:1; transform:translateY(0)      scale(1); }
+  }
+
+  @keyframes toastOut {
+    from { opacity:1; transform:translateY(0)    scale(1); }
+    to   { opacity:0; transform:translateY(-10px) scale(0.92); }
   }
 
   .chat-area {
@@ -1227,7 +1249,7 @@
 
       <!-- Scatter Deck -->
       <div class="deck-scatter-wrap" id="deckScatterWrap">
-        <div class="deck-scatter-area" id="deckScatterArea" title="Draw from the deck (only when it's your turn and you've been told to Go Fish)">
+        <div class="deck-scatter-area" id="deckScatterArea" onclick="pickFromDeck()" title="Pick a card from the deck">
           <div class="deck-scatter-card" style="left:60px;top:14px;transform:rotate(-16deg)"><div class="fish-back">🐟</div></div>
           <div class="deck-scatter-card" style="left:70px;top:8px;transform:rotate(-5deg)"><div class="fish-back">🐟</div></div>
           <div class="deck-scatter-card" style="left:80px;top:12px;transform:rotate(5deg)"><div class="fish-back">🐟</div></div>
@@ -1252,14 +1274,12 @@
       </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar: scores + chat only, no log -->
     <div class="game-sidebar">
       <div class="sidebar-header">Scoreboard</div>
       <div class="scores-list" id="scoresList"></div>
 
-      <div class="sidebar-header" style="border-top:1px solid rgba(78,205,196,0.1)">Game Log</div>
-      <div class="log-area" id="logArea"></div>
-
+      <div class="sidebar-header" style="border-top:1px solid rgba(78,205,196,0.1); margin-top:auto">Chat</div>
       <div class="chat-area">
         <input class="chat-input" id="chatInput" placeholder="Say something..." maxlength="200"
           onkeydown="if(event.key==='Enter')sendChat()">
@@ -1291,6 +1311,9 @@
   </div>
 </div>
 
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
 <!-- Winner Popup -->
 <div id="winnerPopup">
   <div class="winner-popup-bg" onclick="closeWinnerPopup()"></div>
@@ -1316,6 +1339,31 @@ let gameState = null;
 
 const AVATAR_EMOJIS = ['🐬','🦈','🐙','🦞','🐡','🦑'];
 const SUIT_COLORS = { '♠': 'black', '♣': 'black', '♥': 'red', '♦': 'red' };
+let lastToastMsg = null;
+let waitingForDraw = false; // true when this player must pick from the scattered deck
+
+// ─── Toast system ─────────────────────────────────────────────────────────────
+function showToast(msg, extraDelay = 0) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+
+  // Pick toast style based on message content
+  let cls = 'toast';
+  if (msg.includes('📚')) cls += ' toast-book';
+  else if (msg.includes('🐟') || msg.includes('Go Fish')) cls += ' toast-fish';
+  else if (msg.includes('🎯') || msg.includes('got')) cls += ' toast-got';
+  else if (msg.includes('⏭️') || msg.includes('✨') || msg.includes('goes again')) cls += ' toast-turn';
+  else cls += ' toast-system';
+
+  div.className = cls;
+  div.textContent = msg;
+  const delay = 2.2 + extraDelay;
+  div.style.setProperty('--toast-delay', delay + 's');
+  container.appendChild(div);
+  // Remove from DOM after animation finishes
+  setTimeout(() => div.remove(), (delay + 0.5) * 1000);
+}
 
 // ─── Bubbles ──────────────────────────────────────────────────────────────────
 function createBubbles() {
@@ -1461,8 +1509,27 @@ function renderGame(state) {
   document.getElementById('deckCount').textContent = `${state.deckCount} cards left`;
   const deckLabel = document.getElementById('deckCountLabel');
   if (deckLabel) deckLabel.textContent = `${state.deckCount} card${state.deckCount !== 1 ? 's' : ''} remaining`;
+
+  // waitingForDraw: is it MY turn to pick from the deck?
+  waitingForDraw = (state.waitingForDraw?.playerId === myPlayerId);
   const scatterWrap = document.getElementById('deckScatterWrap');
-  if (scatterWrap) scatterWrap.style.opacity = state.deckCount === 0 ? '0.3' : '1';
+  const scatterArea = document.getElementById('deckScatterArea');
+  if (scatterWrap) {
+    if (state.deckCount === 0) {
+      scatterWrap.style.opacity = '0.3';
+      scatterWrap.style.pointerEvents = 'none';
+    } else if (waitingForDraw) {
+      scatterWrap.style.opacity = '1';
+      scatterWrap.style.pointerEvents = 'all';
+      scatterArea && (scatterArea.style.filter = 'drop-shadow(0 0 18px rgba(78,205,196,0.8))');
+      scatterArea && (scatterArea.style.transform = 'scale(1.06)');
+    } else {
+      scatterWrap.style.opacity = state.waitingForDraw ? '0.5' : '1';
+      scatterWrap.style.pointerEvents = 'none';
+      scatterArea && (scatterArea.style.filter = 'none');
+      scatterArea && (scatterArea.style.transform = 'none');
+    }
+  }
 
   // My info
   document.getElementById('myNameDisplay').textContent = myPlayer?.name || 'You';
@@ -1509,15 +1576,14 @@ function renderGame(state) {
     scoresList.appendChild(div);
   });
 
-  // Log
-  const logArea = document.getElementById('logArea');
-  logArea.innerHTML = '';
-  state.log.forEach(entry => {
-    const div = document.createElement('div');
-    div.className = 'log-entry';
-    div.textContent = entry;
-    logArea.appendChild(div);
-  });
+  // Toasts: show new log entries that appeared since last render
+  if (state.log.length > 0) {
+    const newTop = state.log[0];
+    if (newTop !== lastToastMsg) {
+      lastToastMsg = newTop;
+      showToast(newTop);
+    }
+  }
 
   // My Hand
   renderHand(state.myHand);
@@ -1613,6 +1679,26 @@ function renderHand(hand) {
 
 function updateAskPanel(state) {
   const panel = document.getElementById('askContent');
+
+  // Someone else is waiting to draw — show who
+  if (state.waitingForDraw && state.waitingForDraw.playerId !== myPlayerId) {
+    const picker = state.players.find(p => p.id === state.waitingForDraw.playerId);
+    panel.innerHTML = `<div class="not-my-turn-msg">🎴 ${escHtml(picker?.name || '...')} is picking a card from the deck...</div>`;
+    return;
+  }
+
+  // MY turn to pick from deck
+  if (waitingForDraw) {
+    panel.innerHTML = `
+      <div style="text-align:center; padding:0.5rem 0">
+        <div style="font-size:1.5rem; margin-bottom:0.4rem">🎴</div>
+        <div style="color:var(--mint); font-family:'Fraunces',serif; font-size:1rem; font-weight:700; margin-bottom:0.3rem">Go Fish!</div>
+        <div style="color:var(--foam); font-size:0.82rem">Click any card in the pile above to draw!</div>
+        <div style="color:var(--muted); font-size:0.72rem; margin-top:0.4rem">(The cards are face-down — it's luck!)</div>
+      </div>`;
+    return;
+  }
+
   if (!isMyTurn) {
     const currentPlayer = state.players.find(p => p.id === state.currentTurnPlayerId);
     panel.innerHTML = `<div class="not-my-turn-msg">⏳ Waiting for ${escHtml(currentPlayer?.name || '...')} to play...</div>`;
@@ -1626,7 +1712,6 @@ function updateAskPanel(state) {
   html += '</div>';
 
   if (selectedTarget) {
-    // Show rank buttons based on cards in hand
     const myRanks = [...new Set(gameState.myHand.map(c => c.rank))];
     const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
     html += '<div class="rank-picker">';
@@ -1670,6 +1755,19 @@ function submitAsk() {
   });
   selectedTarget = null;
   selectedRank = null;
+}
+
+function pickFromDeck() {
+  if (!waitingForDraw) return;
+  // Animate a card flipping out
+  const area = document.getElementById('deckScatterArea');
+  if (area) {
+    area.style.transition = 'transform 0.2s, filter 0.2s';
+    area.style.transform = 'scale(0.92)';
+    setTimeout(() => { area.style.transform = 'scale(1.06)'; }, 120);
+  }
+  socket.emit('drawCard', { roomCode: myRoomCode, playerId: myPlayerId });
+  waitingForDraw = false;
 }
 
 function sendChat() {
