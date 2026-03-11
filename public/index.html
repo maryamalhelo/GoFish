@@ -783,17 +783,21 @@
     letter-spacing:1px;
   }
 
-  /* Go Fish draw overlay */
+  /* Go Fish draw overlay — full screen, player picks one of the spread cards */
   #goFishOverlay {
     position: fixed;
     inset: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 1.5rem;
     z-index: 800;
     pointer-events: none;
     opacity: 0;
-    transition: opacity 0.3s;
+    transition: opacity 0.35s;
+    background: rgba(6,14,26,0.88);
+    backdrop-filter: blur(6px);
   }
 
   #goFishOverlay.show {
@@ -801,78 +805,115 @@
     opacity: 1;
   }
 
-  .gofish-bg {
-    position: absolute;
-    inset: 0;
-    background: rgba(6,14,26,0.82);
-    backdrop-filter: blur(4px);
-  }
-
-  .gofish-box {
-    position: relative;
-    background: linear-gradient(160deg, #0d2240 0%, #06121e 100%);
-    border: 2px solid rgba(78,205,196,0.6);
-    border-radius: 24px;
-    padding: 2.5rem 2.5rem 2rem;
+  .gofish-header {
     text-align: center;
-    max-width: 340px;
-    width: 90%;
-    box-shadow: 0 0 50px rgba(78,205,196,0.25), 0 20px 60px rgba(0,0,0,0.6);
-    animation: popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both;
+    animation: dropIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both;
   }
 
   .gofish-fish {
-    font-size: 3.5rem;
+    font-size: 3rem;
     display: block;
-    margin-bottom: 0.5rem;
-    animation: fishWiggle 0.6s ease infinite alternate;
+    margin-bottom: 0.4rem;
+    animation: fishWiggle 0.7s ease infinite alternate;
   }
 
   @keyframes fishWiggle {
-    from { transform: rotate(-8deg) scale(1); }
-    to   { transform: rotate(8deg) scale(1.1); }
+    from { transform: rotate(-10deg) scale(1); }
+    to   { transform: rotate(10deg)  scale(1.12); }
   }
 
   .gofish-title {
     font-family: 'Fraunces', serif;
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 900;
     color: var(--mint);
-    text-shadow: 0 0 20px rgba(78,205,196,0.5);
+    text-shadow: 0 0 24px rgba(78,205,196,0.6);
+    line-height: 1;
     margin-bottom: 0.3rem;
   }
 
   .gofish-sub {
     color: var(--foam);
     font-size: 0.85rem;
-    margin-bottom: 1.5rem;
     line-height: 1.5;
+    opacity: 0.85;
   }
 
-  .gofish-draw-btn {
-    background: linear-gradient(135deg, var(--mint), #3ab8b0);
-    border: none;
-    border-radius: 14px;
-    color: var(--deep);
-    font-family: 'Fraunces', serif;
-    font-size: 1.1rem;
-    font-weight: 900;
-    padding: 0.9rem 2rem;
+  /* The spread of face-down cards the player picks from */
+  .gofish-card-spread {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    max-width: 500px;
+    padding: 1rem;
+    animation: dropIn 0.5s cubic-bezier(0.175,0.885,0.32,1.275) 0.1s both;
+  }
+
+  .gofish-pick-card {
+    width: 72px;
+    height: 102px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #1e3a6e 0%, #0d2040 55%, #162d58 100%);
+    border: 2px solid rgba(100,160,255,0.4);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
     cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    letter-spacing: 0.5px;
-    animation: pulse 1.2s ease infinite;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s cubic-bezier(0.175,0.885,0.32,1.5), box-shadow 0.2s;
+    flex-shrink: 0;
   }
 
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(78,205,196,0.5); transform: scale(1); }
-    50%       { box-shadow: 0 0 0 10px rgba(78,205,196,0); transform: scale(1.03); }
+  /* Card back cross-hatch pattern */
+  .gofish-pick-card::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(100,160,255,0.2);
+    border-radius: 7px;
+    background:
+      repeating-linear-gradient( 45deg, rgba(100,160,255,0.07) 0px, rgba(100,160,255,0.07) 2px, transparent 2px, transparent 9px),
+      repeating-linear-gradient(-45deg, rgba(100,160,255,0.07) 0px, rgba(100,160,255,0.07) 2px, transparent 2px, transparent 9px);
   }
 
-  .gofish-draw-btn:hover {
-    transform: scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(78,205,196,0.5) !important;
+  .gofish-pick-card .pick-fish {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.8rem;
+    opacity: 0.3;
+  }
+
+  .gofish-pick-card:hover {
+    transform: translateY(-18px) scale(1.1) rotate(2deg);
+    box-shadow: 0 20px 40px rgba(78,205,196,0.45), 0 0 0 2px var(--mint);
+    border-color: var(--mint);
+  }
+
+  .gofish-pick-card:nth-child(1) { transform: rotate(-8deg); }
+  .gofish-pick-card:nth-child(2) { transform: rotate(-3deg) translateY(-5px); }
+  .gofish-pick-card:nth-child(3) { transform: rotate(1deg); }
+  .gofish-pick-card:nth-child(4) { transform: rotate(5deg) translateY(-3px); }
+  .gofish-pick-card:nth-child(5) { transform: rotate(9deg); }
+  .gofish-pick-card:nth-child(6) { transform: rotate(-6deg) translateY(4px); }
+  .gofish-pick-card:nth-child(7) { transform: rotate(3deg) translateY(-6px); }
+
+  .gofish-pick-card:nth-child(1):hover { transform: translateY(-18px) scale(1.1) rotate(-8deg); }
+  .gofish-pick-card:nth-child(2):hover { transform: translateY(-18px) scale(1.1) rotate(-3deg); }
+  .gofish-pick-card:nth-child(3):hover { transform: translateY(-18px) scale(1.1) rotate(1deg); }
+  .gofish-pick-card:nth-child(4):hover { transform: translateY(-18px) scale(1.1) rotate(5deg); }
+  .gofish-pick-card:nth-child(5):hover { transform: translateY(-18px) scale(1.1) rotate(9deg); }
+  .gofish-pick-card:nth-child(6):hover { transform: translateY(-18px) scale(1.1) rotate(-6deg); }
+  .gofish-pick-card:nth-child(7):hover { transform: translateY(-18px) scale(1.1) rotate(3deg); }
+
+  .gofish-hint {
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    animation: dropIn 0.5s ease 0.2s both;
   }
 
   /* Winner pop-up */
@@ -1406,15 +1447,17 @@
 <!-- Toast container -->
 <div id="toastContainer"></div>
 
-<!-- Go Fish Draw Overlay -->
+<!-- Go Fish Draw Overlay — player picks one of the spread cards -->
 <div id="goFishOverlay">
-  <div class="gofish-bg"></div>
-  <div class="gofish-box">
+  <div class="gofish-header">
     <span class="gofish-fish">🐟</span>
     <div class="gofish-title">Go Fish!</div>
-    <div class="gofish-sub" id="goFishMsg">They don't have it!<br>Pick a card from the lake.</div>
-    <button class="gofish-draw-btn" onclick="drawFromOverlay()">🎴 Pick a Card!</button>
+    <div class="gofish-sub" id="goFishMsg">They don't have it! Pick a card from the lake.</div>
   </div>
+  <div class="gofish-card-spread" id="goFishCardSpread">
+    <!-- Cards injected by JS based on deck count -->
+  </div>
+  <div class="gofish-hint">↑ Click any face-down card to draw it ↑</div>
 </div>
 
 <!-- Winner Popup -->
@@ -1446,6 +1489,25 @@ let lastToastMsg = null;
 let waitingForDraw = false; // true when this player must pick from the scattered deck
 
 // ─── Toast system ─────────────────────────────────────────────────────────────
+function showPrivateToast(msg, accentColor = '#4ecdc4') {
+  // Only shown to the local player — styled differently to make that clear
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'toast';
+  div.style.cssText = `
+    border-color: ${accentColor};
+    color: ${accentColor};
+    background: rgba(10,22,40,0.97);
+    font-weight: 600;
+    padding-bottom: 0.8rem;
+  `;
+  div.innerHTML = `${msg}<div style="font-size:0.62rem;opacity:0.5;margin-top:3px;letter-spacing:1px">ONLY YOU SEE THIS</div>`;
+  div.style.setProperty('--toast-delay', '3s');
+  container.appendChild(div);
+  setTimeout(() => div.remove(), 3600);
+}
+
 function showToast(msg, extraDelay = 0) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -1554,6 +1616,17 @@ socket.on('error', ({ message }) => {
   showLobbyError(message);
 });
 
+// Private: only the drawer sees what card they picked
+socket.on('drewCard', ({ rank, suit }) => {
+  const isRed = ['♥','♦'].includes(suit);
+  const color = isRed ? '#e74c3c' : '#1a1a2e';
+  showPrivateToast(`You drew the ${rank}${suit}`, color);
+});
+
+socket.on('drewLucky', ({ rank }) => {
+  showPrivateToast(`🍀 Lucky! You drew a ${rank} — go again!`, '#f0c040');
+});
+
 socket.on('gameState', (state) => {
   gameState = state;
   const prevScreen = document.querySelector('.screen:not(.hidden)')?.id;
@@ -1620,7 +1693,7 @@ function renderGame(state) {
   // Show Go Fish overlay the moment we enter waitingForDraw state
   if (waitingForDraw && !wasWaitingForDraw) {
     const target = state.players.find(p => p.id === state.waitingForDraw?.targetId);
-    showGoFishOverlay(target?.name || '...', state.waitingForDraw?.askedRank || '?');
+    showGoFishOverlay(target?.name || '...', state.waitingForDraw?.askedRank || '?', state.deckCount);
   }
   // Hide overlay if state cleared (e.g. after drawing)
   if (!waitingForDraw && wasWaitingForDraw) {
@@ -1881,16 +1954,39 @@ function pickFromDeck() {
   waitingForDraw = false;
 }
 
-function drawFromOverlay() {
-  // Button inside the Go Fish overlay
-  pickFromDeck();
-}
-
-function showGoFishOverlay(targetName, rank) {
+function showGoFishOverlay(targetName, rank, deckCount) {
   const overlay = document.getElementById('goFishOverlay');
   const msg = document.getElementById('goFishMsg');
-  if (msg) msg.innerHTML = `<strong>${escHtml(targetName)}</strong> doesn't have any ${rank}s!<br>Pick a card from the lake.`;
+  const spread = document.getElementById('goFishCardSpread');
+
+  if (msg) msg.innerHTML = `<strong>${escHtml(targetName)}</strong> doesn't have any ${rank}s!`;
+
+  // Show between 5 and 7 face-down cards to pick from (capped by deck size)
+  const numCards = Math.min(Math.max(deckCount, 1), 7);
+  if (spread) {
+    spread.innerHTML = '';
+    for (let i = 0; i < numCards; i++) {
+      const card = document.createElement('div');
+      card.className = 'gofish-pick-card';
+      card.innerHTML = '<div class="pick-fish">🐟</div>';
+      card.addEventListener('click', () => onPickCard(card));
+      spread.appendChild(card);
+    }
+  }
+
   if (overlay) overlay.classList.add('show');
+}
+
+function onPickCard(cardEl) {
+  // Flip animation: card spins and disappears, then draw
+  cardEl.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+  cardEl.style.transform += ' rotateY(90deg) scale(1.2)';
+  cardEl.style.opacity = '0';
+  // Disable all cards immediately so you can only click once
+  document.querySelectorAll('.gofish-pick-card').forEach(c => c.style.pointerEvents = 'none');
+  setTimeout(() => {
+    pickFromDeck();
+  }, 280);
 }
 
 function closeGoFishOverlay() {
