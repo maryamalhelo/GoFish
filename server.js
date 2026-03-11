@@ -338,7 +338,7 @@ io.on('connection', (socket) => {
     if (!checkGameOver(room)) {
       if (drawnCard.rank === askedRank) {
         // Tell the drawer privately they got lucky (others just see "goes again")
-        socket.emit('drewLucky', { rank: askedRank });
+        socket.emit('drewLucky', { rank: drawnCard.rank, suit: drawnCard.suit });
         addLog(room, `🍀 ${asker.name} drew the card they needed — goes again!`);
       } else {
         // Move to next turn
