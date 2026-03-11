@@ -81,6 +81,7 @@ function startGame(room) {
   room.currentTurn = 0;
   room.log = [];
   room.winner = null;
+  room.waitingForDraw = null;
 
   const handSize = room.players.length <= 3 ? 7 : 5;
   for (const p of room.players) {
@@ -107,7 +108,6 @@ function addLog(room, msg) {
 }
 
 function getRoomState(room, viewingPlayerId) {
-  // Return sanitized state (hide other players' cards)
   return {
     code: room.code,
     phase: room.phase,
@@ -124,6 +124,7 @@ function getRoomState(room, viewingPlayerId) {
     currentTurnPlayerId: room.players[room.currentTurn]?.id,
     log: room.log,
     winner: room.winner,
+    waitingForDraw: room.waitingForDraw || null, // playerId who must pick from deck
   };
 }
 
@@ -285,58 +286,68 @@ io.on('connection', (socket) => {
         addLog(room, `✨ ${asker.name} goes again!`);
       }
     } else {
-      // Go Fish!
+      // Go Fish! — player must pick a card from the deck themselves
       addLog(room, `🐟 ${asker.name} asked ${target.name} for ${rank}s — Go Fish!`);
       if (room.deck.length > 0) {
-        const drawn = room.deck.splice(0, 1);
-        room.hands[playerId].push(...drawn);
-
-        const drawnCard = drawn[0];
-        // If they drew the rank they asked for, they go again
-        if (drawnCard.rank === rank) {
-          addLog(room, `🍀 ${asker.name} drew a ${rank} — lucky! Goes again!`);
-          // Check books
-          const { newHand, books } = checkBooks(room.hands[playerId]);
-          room.hands[playerId] = newHand;
-          if (books.length) {
-            asker.books.push(...books);
-            addLog(room, `📚 ${asker.name} completed a book of ${books.join(', ')}!`);
-          }
-          if (!checkGameOver(room)) {
-            broadcastState(room);
-            return; // same player's turn continues
-          }
-        } else {
-          addLog(room, `🃏 ${asker.name} drew a card from the deck.`);
-          // Check books
-          const { newHand, books } = checkBooks(room.hands[playerId]);
-          room.hands[playerId] = newHand;
-          if (books.length) {
-            asker.books.push(...books);
-            addLog(room, `📚 ${asker.name} completed a book of ${books.join(', ')}!`);
-          }
-          if (!checkGameOver(room)) {
-            // Move to next turn
-            room.currentTurn = (room.currentTurn + 1) % room.players.length;
-            // Skip players with no cards (if deck empty)
-            let tries = 0;
-            while (
-              room.deck.length === 0 &&
-              (room.hands[room.players[room.currentTurn].id] || []).length === 0 &&
-              tries < room.players.length
-            ) {
-              room.currentTurn = (room.currentTurn + 1) % room.players.length;
-              tries++;
-            }
-            addLog(room, `⏭️ ${room.players[room.currentTurn].name}'s turn.`);
-          }
-        }
+        // Set a pending state: this player must pick from the deck
+        room.waitingForDraw = { playerId, askedRank: rank, targetId };
+        addLog(room, `🎴 ${asker.name}, pick a card from the deck!`);
       } else {
         addLog(room, `🎣 No cards left in the deck!`);
         if (!checkGameOver(room)) {
           room.currentTurn = (room.currentTurn + 1) % room.players.length;
           addLog(room, `⏭️ ${room.players[room.currentTurn].name}'s turn.`);
         }
+      }
+    }
+
+    broadcastState(room);
+  });
+
+  // Player picks a card from the scattered deck
+  socket.on('drawCard', ({ roomCode, playerId }) => {
+    const room = rooms[roomCode];
+    if (!room || room.phase !== 'playing') return;
+    if (!room.waitingForDraw || room.waitingForDraw.playerId !== playerId) return;
+    if (room.deck.length === 0) return;
+
+    const asker = room.players.find(p => p.id === playerId);
+    const askedRank = room.waitingForDraw.askedRank;
+    room.waitingForDraw = null;
+
+    // Draw a random card from the deck (player "picks" any card — same result, fun UX)
+    const randomIdx = Math.floor(Math.random() * room.deck.length);
+    const drawn = room.deck.splice(randomIdx, 1);
+    room.hands[playerId].push(...drawn);
+
+    const drawnCard = drawn[0];
+    addLog(room, `🃏 ${asker.name} drew the ${drawnCard.rank}${drawnCard.suit} from the deck.`);
+
+    // Check books
+    const { newHand, books } = checkBooks(room.hands[playerId]);
+    room.hands[playerId] = newHand;
+    if (books.length) {
+      asker.books.push(...books);
+      addLog(room, `📚 ${asker.name} completed a book of ${books.join(', ')}!`);
+    }
+
+    if (!checkGameOver(room)) {
+      if (drawnCard.rank === askedRank) {
+        addLog(room, `🍀 Lucky! ${asker.name} drew a ${askedRank} — goes again!`);
+        // same player's turn
+      } else {
+        // Move to next turn
+        room.currentTurn = (room.currentTurn + 1) % room.players.length;
+        let tries = 0;
+        while (
+          room.deck.length === 0 &&
+          (room.hands[room.players[room.currentTurn].id] || []).length === 0 &&
+          tries < room.players.length
+        ) {
+          room.currentTurn = (room.currentTurn + 1) % room.players.length;
+          tries++;
+        }
+        addLog(room, `⏭️ ${room.players[room.currentTurn].name}'s turn.`);
       }
     }
 
@@ -364,6 +375,7 @@ io.on('connection', (socket) => {
     room.deck = [];
     room.log = [];
     room.winner = null;
+    room.waitingForDraw = null;
     for (const p of room.players) p.books = [];
     addLog(room, `🔄 ${player.name} reset the room. Ready to play again!`);
     broadcastState(room);
