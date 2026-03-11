@@ -916,6 +916,113 @@
     animation: dropIn 0.5s ease 0.2s both;
   }
 
+  /* Card flip reveal */
+  .gofish-reveal-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    animation: dropIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275) both;
+  }
+
+  .gofish-reveal-label {
+    font-family: 'Fraunces', serif;
+    font-size: 1.1rem;
+    color: var(--mint);
+    text-shadow: 0 0 12px rgba(78,205,196,0.5);
+  }
+
+  .flip-card-scene {
+    width: 90px;
+    height: 126px;
+    perspective: 600px;
+  }
+
+  .flip-card-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .flip-card-inner.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .flip-card-front,
+  .flip-card-back {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* Back: same face-down style */
+  .flip-card-back {
+    background: linear-gradient(145deg, #1e3a6e 0%, #0d2040 55%, #162d58 100%);
+    border: 2px solid rgba(100,160,255,0.4);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    opacity: 0.6;
+  }
+
+  .flip-card-back::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(100,160,255,0.2);
+    border-radius: 7px;
+    background:
+      repeating-linear-gradient( 45deg, rgba(100,160,255,0.07) 0px, rgba(100,160,255,0.07) 2px, transparent 2px, transparent 9px),
+      repeating-linear-gradient(-45deg, rgba(100,160,255,0.07) 0px, rgba(100,160,255,0.07) 2px, transparent 2px, transparent 9px);
+  }
+
+  /* Front: revealed card face */
+  .flip-card-front {
+    transform: rotateY(180deg);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 0 3px var(--mint);
+  }
+
+  .flip-card-front.suit-hearts   { background: linear-gradient(160deg,#fff5f5 0%,#ffe0e0 100%); }
+  .flip-card-front.suit-diamonds { background: linear-gradient(160deg,#fff8f0 0%,#ffe8cc 100%); }
+  .flip-card-front.suit-spades   { background: linear-gradient(160deg,#f0f4ff 0%,#dce6ff 100%); }
+  .flip-card-front.suit-clubs    { background: linear-gradient(160deg,#f0fff8 0%,#d0f5e8 100%); }
+
+  .flip-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .flip-corner-bottom { transform: rotate(180deg); align-self: flex-end; }
+
+  .flip-rank { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 900; line-height:1; }
+  .flip-suit-sm { font-size: 0.7rem; line-height:1; margin-top:1px; }
+  .flip-suit-center {
+    font-size: 2.4rem;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-52%);
+    color: #111 !important;
+    opacity: 0.85;
+  }
+
+  .gofish-reveal-countdown {
+    font-size: 0.75rem;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
   /* Winner pop-up */
   #winnerPopup {
     position: fixed;
@@ -1489,25 +1596,6 @@ let lastToastMsg = null;
 let waitingForDraw = false; // true when this player must pick from the scattered deck
 
 // ─── Toast system ─────────────────────────────────────────────────────────────
-function showPrivateToast(msg, accentColor = '#4ecdc4') {
-  // Only shown to the local player — styled differently to make that clear
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
-  const div = document.createElement('div');
-  div.className = 'toast';
-  div.style.cssText = `
-    border-color: ${accentColor};
-    color: ${accentColor};
-    background: rgba(10,22,40,0.97);
-    font-weight: 600;
-    padding-bottom: 0.8rem;
-  `;
-  div.innerHTML = `${msg}<div style="font-size:0.62rem;opacity:0.5;margin-top:3px;letter-spacing:1px">ONLY YOU SEE THIS</div>`;
-  div.style.setProperty('--toast-delay', '3s');
-  container.appendChild(div);
-  setTimeout(() => div.remove(), 3600);
-}
-
 function showToast(msg, extraDelay = 0) {
   const container = document.getElementById('toastContainer');
   if (!container) return;
@@ -1616,15 +1704,15 @@ socket.on('error', ({ message }) => {
   showLobbyError(message);
 });
 
-// Private: only the drawer sees what card they picked
+// Private: only the drawer sees what card they picked — flip reveal in overlay
 socket.on('drewCard', ({ rank, suit }) => {
-  const isRed = ['♥','♦'].includes(suit);
-  const color = isRed ? '#e74c3c' : '#1a1a2e';
-  showPrivateToast(`You drew the ${rank}${suit}`, color);
+  showCardFlipReveal(rank, suit);
 });
 
-socket.on('drewLucky', ({ rank }) => {
-  showPrivateToast(`🍀 Lucky! You drew a ${rank} — go again!`, '#f0c040');
+socket.on('drewLucky', ({ rank, suit }) => {
+  showCardFlipReveal(rank, suit);
+  // Small extra note that they go again — shown AFTER the flip closes via a brief toast
+  setTimeout(() => showToast(`🍀 You drew the ${rank} you needed — go again!`), 5500);
 });
 
 socket.on('gameState', (state) => {
@@ -1978,20 +2066,85 @@ function showGoFishOverlay(targetName, rank, deckCount) {
 }
 
 function onPickCard(cardEl) {
-  // Flip animation: card spins and disappears, then draw
-  cardEl.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
-  cardEl.style.transform += ' rotateY(90deg) scale(1.2)';
-  cardEl.style.opacity = '0';
-  // Disable all cards immediately so you can only click once
+  // Disable all cards so you can only pick once
   document.querySelectorAll('.gofish-pick-card').forEach(c => c.style.pointerEvents = 'none');
-  setTimeout(() => {
-    pickFromDeck();
-  }, 280);
+  // Shrink the picked card slightly as feedback
+  cardEl.style.transition = 'transform 0.15s ease';
+  cardEl.style.transform = cardEl.style.transform + ' scale(0.9)';
+  // Emit to server — the drewCard event coming back will do the flip reveal
+  pickFromDeck();
 }
 
 function closeGoFishOverlay() {
   const overlay = document.getElementById('goFishOverlay');
   if (overlay) overlay.classList.remove('show');
+  // Restore overlay to card-spread state for next time
+  const spread = document.getElementById('goFishCardSpread');
+  const hint = overlay?.querySelector('.gofish-hint');
+  if (spread) spread.style.display = '';
+  if (hint) hint.style.display = '';
+}
+
+function showCardFlipReveal(rank, suit) {
+  const overlay = document.getElementById('goFishOverlay');
+  const spread = document.getElementById('goFishCardSpread');
+  const hint = overlay?.querySelector('.gofish-hint');
+
+  // Hide the spread and hint, show the flip card instead
+  if (spread) spread.style.display = 'none';
+  if (hint) hint.style.display = 'none';
+
+  // Build suit classes
+  const suitMap = { '♥':'suit-hearts','♦':'suit-diamonds','♠':'suit-spades','♣':'suit-clubs' };
+  const colorMap = { '♥':'red-card','♦':'orange-card','♠':'black-card','♣':'green-card' };
+  const sc = suitMap[suit] || 'suit-spades';
+  const col = colorMap[suit] || 'black-card';
+
+  // Inject the flip card reveal
+  const wrap = document.createElement('div');
+  wrap.className = 'gofish-reveal-wrap';
+  wrap.innerHTML = `
+    <div class="gofish-reveal-label">You drew...</div>
+    <div class="flip-card-scene">
+      <div class="flip-card-inner" id="flipCardInner">
+        <div class="flip-card-front ${sc}">
+          <div class="flip-corner">
+            <div class="flip-rank ${col}">${rank}</div>
+            <div class="flip-suit-sm ${col}">${suit}</div>
+          </div>
+          <div class="flip-suit-center">${suit}</div>
+          <div class="flip-corner flip-corner-bottom">
+            <div class="flip-rank ${col}">${rank}</div>
+            <div class="flip-suit-sm ${col}">${suit}</div>
+          </div>
+        </div>
+        <div class="flip-card-back">🐟</div>
+      </div>
+    </div>
+    <div class="gofish-reveal-countdown" id="revealCountdown">Going to your hand in 5...</div>
+  `;
+  overlay.appendChild(wrap);
+
+  // Trigger flip after a short delay so the CSS transition fires
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const inner = document.getElementById('flipCardInner');
+      if (inner) inner.classList.add('flipped');
+    });
+  });
+
+  // Countdown + close after 5 seconds
+  let secs = 4;
+  const countdown = setInterval(() => {
+    const el = document.getElementById('revealCountdown');
+    if (el) el.textContent = secs > 0 ? `Going to your hand in ${secs}...` : 'Adding to your hand...';
+    secs--;
+    if (secs < -1) {
+      clearInterval(countdown);
+      wrap.remove();
+      closeGoFishOverlay();
+    }
+  }, 1000);
 }
 
 function sendChat() {
