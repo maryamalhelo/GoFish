@@ -321,7 +321,11 @@ io.on('connection', (socket) => {
     room.hands[playerId].push(...drawn);
 
     const drawnCard = drawn[0];
-    addLog(room, `🃏 ${asker.name} drew the ${drawnCard.rank}${drawnCard.suit} from the deck.`);
+    // Public log: just says drew a card — does NOT reveal which card
+    addLog(room, `🃏 ${asker.name} drew a card from the lake.`);
+
+    // Private message to the drawer only — tells them what they got
+    socket.emit('drewCard', { rank: drawnCard.rank, suit: drawnCard.suit });
 
     // Check books
     const { newHand, books } = checkBooks(room.hands[playerId]);
@@ -333,8 +337,9 @@ io.on('connection', (socket) => {
 
     if (!checkGameOver(room)) {
       if (drawnCard.rank === askedRank) {
-        addLog(room, `🍀 Lucky! ${asker.name} drew a ${askedRank} — goes again!`);
-        // same player's turn
+        // Tell the drawer privately they got lucky (others just see "goes again")
+        socket.emit('drewLucky', { rank: askedRank });
+        addLog(room, `🍀 ${asker.name} drew the card they needed — goes again!`);
       } else {
         // Move to next turn
         room.currentTurn = (room.currentTurn + 1) % room.players.length;
