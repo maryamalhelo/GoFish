@@ -1593,7 +1593,8 @@ let gameState = null;
 const AVATAR_EMOJIS = ['🐬','🦈','🐙','🦞','🐡','🦑'];
 const SUIT_COLORS = { '♠': 'black', '♣': 'black', '♥': 'red', '♦': 'red' };
 let lastToastMsg = null;
-let waitingForDraw = false; // true when this player must pick from the scattered deck
+let waitingForDraw = false;   // true when this player must pick from the scattered deck
+let revealInProgress = false; // true while the flip card reveal is showing — block renderGame from closing overlay
 
 // ─── Toast system ─────────────────────────────────────────────────────────────
 function showToast(msg, extraDelay = 0) {
@@ -1783,8 +1784,8 @@ function renderGame(state) {
     const target = state.players.find(p => p.id === state.waitingForDraw?.targetId);
     showGoFishOverlay(target?.name || '...', state.waitingForDraw?.askedRank || '?', state.deckCount);
   }
-  // Hide overlay if state cleared (e.g. after drawing)
-  if (!waitingForDraw && wasWaitingForDraw) {
+  // Hide overlay if state cleared — but NOT if a flip reveal is in progress
+  if (!waitingForDraw && wasWaitingForDraw && !revealInProgress) {
     closeGoFishOverlay();
   }
 
@@ -2037,9 +2038,11 @@ function submitAsk() {
 
 function pickFromDeck() {
   if (!waitingForDraw) return;
-  closeGoFishOverlay();
-  socket.emit('drawCard', { roomCode: myRoomCode, playerId: myPlayerId });
+  // DON'T close the overlay here — showCardFlipReveal will take over the overlay
+  // Just emit to server and mark that we're waiting for the drewCard response
   waitingForDraw = false;
+  revealInProgress = true; // prevent renderGame from closing overlay while we wait
+  socket.emit('drawCard', { roomCode: myRoomCode, playerId: myPlayerId });
 }
 
 function showGoFishOverlay(targetName, rank, deckCount) {
@@ -2077,22 +2080,35 @@ function onPickCard(cardEl) {
 
 function closeGoFishOverlay() {
   const overlay = document.getElementById('goFishOverlay');
-  if (overlay) overlay.classList.remove('show');
-  // Restore overlay to card-spread state for next time
+  if (!overlay) return;
+  overlay.classList.remove('show');
+  // Clean up any leftover reveal wrap
+  overlay.querySelectorAll('.gofish-reveal-wrap').forEach(el => el.remove());
+  // Restore spread and hint for next round
   const spread = document.getElementById('goFishCardSpread');
-  const hint = overlay?.querySelector('.gofish-hint');
+  const hint = overlay.querySelector('.gofish-hint');
   if (spread) spread.style.display = '';
   if (hint) hint.style.display = '';
+  revealInProgress = false;
 }
 
 function showCardFlipReveal(rank, suit) {
   const overlay = document.getElementById('goFishOverlay');
+  if (!overlay) return;
+
+  // Make sure overlay is visible (drewCard arrives after drawCard emit)
+  overlay.classList.add('show');
+  revealInProgress = true;
+
   const spread = document.getElementById('goFishCardSpread');
-  const hint = overlay?.querySelector('.gofish-hint');
+  const hint = overlay.querySelector('.gofish-hint');
 
   // Hide the spread and hint, show the flip card instead
   if (spread) spread.style.display = 'none';
   if (hint) hint.style.display = 'none';
+
+  // Remove any leftover reveal wrap from a previous round
+  overlay.querySelectorAll('.gofish-reveal-wrap').forEach(el => el.remove());
 
   // Build suit classes
   const suitMap = { '♥':'suit-hearts','♦':'suit-diamonds','♠':'suit-spades','♣':'suit-clubs' };
@@ -2100,7 +2116,6 @@ function showCardFlipReveal(rank, suit) {
   const sc = suitMap[suit] || 'suit-spades';
   const col = colorMap[suit] || 'black-card';
 
-  // Inject the flip card reveal
   const wrap = document.createElement('div');
   wrap.className = 'gofish-reveal-wrap';
   wrap.innerHTML = `
@@ -2125,23 +2140,22 @@ function showCardFlipReveal(rank, suit) {
   `;
   overlay.appendChild(wrap);
 
-  // Trigger flip after a short delay so the CSS transition fires
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const inner = document.getElementById('flipCardInner');
-      if (inner) inner.classList.add('flipped');
-    });
-  });
+  // Trigger the CSS flip after two animation frames so transition fires
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const inner = document.getElementById('flipCardInner');
+    if (inner) inner.classList.add('flipped');
+  }));
 
-  // Countdown + close after 5 seconds
+  // Countdown 5 → 0 then close
   let secs = 4;
-  const countdown = setInterval(() => {
+  const countdownId = setInterval(() => {
     const el = document.getElementById('revealCountdown');
     if (el) el.textContent = secs > 0 ? `Going to your hand in ${secs}...` : 'Adding to your hand...';
     secs--;
     if (secs < -1) {
-      clearInterval(countdown);
+      clearInterval(countdownId);
       wrap.remove();
+      revealInProgress = false;
       closeGoFishOverlay();
     }
   }, 1000);
